@@ -1,26 +1,148 @@
 @import "tailwindcss";
 
+/*
+ * Obralia Design System
+ * Mobile-first SaaS for Spanish construction contractors (autónomos de reformas)
+ * Trust + warmth + construction industry feel
+ */
+
+/* ── Light mode tokens ─────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafaf7;            /* warm off-white, paper-like */
+  --foreground: #0c1220;            /* warm dark, not pure black */
+  --primary: #1e3a8a;               /* deep navy (blueprints) */
+  --primary-foreground: #ffffff;
+  --accent: #f59e0b;                /* warm amber (hard hats / equipment) */
+  --accent-foreground: #1e1b0e;     /* dark warm */
+  --muted: #f4f3ee;                 /* warm gray */
+  --muted-foreground: #57534e;      /* warm gray-600 */
+  --border: #e7e5e0;                /* warm gray-200 */
+  --card: #ffffff;
+  --card-foreground: #0c1220;
+  --destructive: #b91c1c;           /* deep red */
+  --destructive-foreground: #ffffff;
+  --success: #15803d;               /* deep green */
+  --ring: #1e3a8a;
+  --radius: 0.75rem;
+  --shadow-card: 0 1px 3px 0 rgb(12 18 32 / 0.08), 0 1px 2px -1px rgb(12 18 32 / 0.05);
+  --shadow-elevated: 0 10px 25px -5px rgb(12 18 32 / 0.10), 0 8px 10px -6px rgb(12 18 32 / 0.04);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* ── Dark mode tokens ──────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0c1220;
+    --foreground: #fafaf7;
+    --primary: #3b82f6;             /* lighter navy for dark bg */
+    --primary-foreground: #ffffff;
+    --accent: #f59e0b;
+    --accent-foreground: #1e1b0e;
+    --muted: #1c2333;
+    --muted-foreground: #94a3b8;
+    --border: #1e293b;
+    --card: #14192a;
+    --card-foreground: #fafaf7;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --success: #22c55e;
+    --ring: #3b82f6;
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-elevated: 0 10px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.3);
   }
 }
 
+/* ── Tailwind v4 theme bridge ──────────────────────────── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-ring: var(--ring);
+  --radius: var(--radius);
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
+}
+
+/* ── Base styles ───────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
+  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss01';
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.01em;
+}
+
+/* ── Typographic utilities ─────────────────────────────── */
+.heading {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Safe-area utilities ───────────────────────────────── */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Hide scrollbar but keep scroll functional ─────────── */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Focus & selection ─────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }

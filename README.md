@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Obralia — Presupuestos de obra en minutos
 
-## Getting Started
+SaaS móvil-first para constructores autónomos y microempresas en España. Crea presupuestos en obra y envíalos por WhatsApp.
 
-First, run the development server:
+## Stack
+
+- **Framework**: Next.js 15 (App Router) + TypeScript strict
+- **Estilos**: Tailwind CSS v4 + componentes shadcn/ui
+- **Auth**: Supabase Auth con OTP por SMS
+- **DB**: Supabase Postgres con RLS
+- **Storage**: Supabase Storage (logos, PDFs)
+- **Billing**: Stripe Billing + Customer Portal
+- **PDF**: @react-pdf/renderer (server-side)
+- **Tests**: Vitest + Playwright
+
+## Setup local
+
+### 1. Clonar y dependencias
+
+```bash
+git clone <repo-url>
+cd obralia
+npm install
+```
+
+### 2. Variables de entorno
+
+```bash
+cp .env.example .env.local
+```
+
+Rellena las variables:
+
+| Variable | Dónde obtenerla |
+|----------|----------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | [Supabase Dashboard](https://supabase.com/dashboard) → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Misma sección |
+| `SUPABASE_SERVICE_ROLE_KEY` | Misma sección (⚠️ nunca exponer al cliente) |
+| `STRIPE_SECRET_KEY` | [Stripe Dashboard](https://dashboard.stripe.com/apikeys) |
+| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → tu endpoint |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe → API keys |
+| `STRIPE_PRICE_*` | Crear productos en Stripe (ver abajo) |
+| `NEXT_PUBLIC_SENTRY_DSN` | [Sentry](https://sentry.io) → Project settings |
+| `NEXT_PUBLIC_POSTHOG_KEY` | [PostHog EU](https://eu.posthog.com) → Project settings |
+
+### 3. Supabase local (opcional)
+
+```bash
+npx supabase start
+npx supabase db reset  # aplica migraciones + seed
+```
+
+### 4. Stripe: crear productos
+
+En el dashboard de Stripe (modo test), crea 3 productos:
+
+- **Básico**: 19€/mes, 190€/año
+- **Pro**: 39€/mes, 390€/año
+- **Equipo**: 79€/mes, 790€/año
+
+Copia los Price IDs a `.env.local`.
+
+### 5. Stripe webhook local
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+### 6. Arrancar
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Comandos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Servidor de desarrollo (Turbopack) |
+| `npm run build` | Build de producción |
+| `npm run typecheck` | Verificar tipos TypeScript |
+| `npm run lint` | Lint con Biome |
+| `npm run test` | Tests unitarios (Vitest) |
+| `npm run test:e2e` | Tests e2e (Playwright) |
+| `npm run db:gen-types` | Regenerar tipos de Supabase |
 
-## Learn More
+## Estructura del proyecto
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+  (auth)/          → Login y verificación SMS
+  (onboarding)/    → Setup empresa + logo + trial
+  (app)/           → Zona autenticada (presupuestos, clientes, ajustes)
+  (marketing)/     → Landing pública
+  api/             → Webhooks Stripe, generación PDF
+components/ui/     → Primitivos UI (button, input, card, dialog, toast...)
+lib/
+  supabase/        → Clients (browser, server, service-role)
+  stripe/          → Stripe helpers
+  iva/             → Lógica IVA española (con tests)
+  pdf/             → Plantilla PDF @react-pdf
+  whatsapp.ts      → Generador de links wa.me
+schemas/           → Zod schemas compartidos
+types/             → TypeScript types
+supabase/
+  migrations/      → SQL versionado
+  seed.sql         → Datos demo
+docs/decisions/    → ADRs
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Decisiones técnicas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Ver [docs/decisions/](docs/decisions/) para ADRs.
