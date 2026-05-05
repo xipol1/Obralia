@@ -1,5 +1,4 @@
-[project]
-id = "obralia-local"
+project_id = "obralia-local"
 
 [api]
 enabled = true

@@ -194,7 +194,7 @@ create policy "partidas_biblioteca_select"
 on public.partidas_biblioteca for select
 using (
   empresa_id is null
-  or empresa_id = any(public.mis_empresa_ids())
+  or empresa_id in (select public.mis_empresa_ids())
 );
 
 -- partidas_biblioteca: INSERT/UPDATE/DELETE solo sobre mías + origen='empresa'
@@ -202,25 +202,25 @@ create policy "partidas_biblioteca_insert_propias"
 on public.partidas_biblioteca for insert
 with check (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 create policy "partidas_biblioteca_update_propias"
 on public.partidas_biblioteca for update
 using (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 )
 with check (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 create policy "partidas_biblioteca_delete_propias"
 on public.partidas_biblioteca for delete
 using (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 -- plantillas_obra: SELECT sistema OR mías
@@ -228,32 +228,32 @@ create policy "plantillas_obra_select"
 on public.plantillas_obra for select
 using (
   empresa_id is null
-  or empresa_id = any(public.mis_empresa_ids())
+  or empresa_id in (select public.mis_empresa_ids())
 );
 
 create policy "plantillas_obra_insert_propias"
 on public.plantillas_obra for insert
 with check (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 create policy "plantillas_obra_update_propias"
 on public.plantillas_obra for update
 using (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 )
 with check (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 create policy "plantillas_obra_delete_propias"
 on public.plantillas_obra for delete
 using (
   origen = 'empresa'
-  and empresa_id = any(public.mis_empresa_ids())
+  and empresa_id in (select public.mis_empresa_ids())
 );
 
 -- plantilla_capitulos: hereda permisos a través de plantilla_id
@@ -263,7 +263,7 @@ using (
   exists (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_capitulos.plantilla_id
-      and (pl.empresa_id is null or pl.empresa_id = any(public.mis_empresa_ids()))
+      and (pl.empresa_id is null or pl.empresa_id in (select public.mis_empresa_ids()))
   )
 );
 
@@ -274,7 +274,7 @@ using (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_capitulos.plantilla_id
       and pl.origen = 'empresa'
-      and pl.empresa_id = any(public.mis_empresa_ids())
+      and pl.empresa_id in (select public.mis_empresa_ids())
   )
 )
 with check (
@@ -282,7 +282,7 @@ with check (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_capitulos.plantilla_id
       and pl.origen = 'empresa'
-      and pl.empresa_id = any(public.mis_empresa_ids())
+      and pl.empresa_id in (select public.mis_empresa_ids())
   )
 );
 
@@ -293,7 +293,7 @@ using (
   exists (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_partidas.plantilla_id
-      and (pl.empresa_id is null or pl.empresa_id = any(public.mis_empresa_ids()))
+      and (pl.empresa_id is null or pl.empresa_id in (select public.mis_empresa_ids()))
   )
 );
 
@@ -304,7 +304,7 @@ using (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_partidas.plantilla_id
       and pl.origen = 'empresa'
-      and pl.empresa_id = any(public.mis_empresa_ids())
+      and pl.empresa_id in (select public.mis_empresa_ids())
   )
 )
 with check (
@@ -312,7 +312,7 @@ with check (
     select 1 from public.plantillas_obra pl
     where pl.id = plantilla_partidas.plantilla_id
       and pl.origen = 'empresa'
-      and pl.empresa_id = any(public.mis_empresa_ids())
+      and pl.empresa_id in (select public.mis_empresa_ids())
   )
 );
 

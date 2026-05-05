@@ -85,37 +85,37 @@ alter table public.factura_lineas   enable row level security;
 
 create policy "facturas_subidas_select_own"
 on public.facturas_subidas for select
-using (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "facturas_subidas_insert_own"
 on public.facturas_subidas for insert
-with check (empresa_id = any(public.mis_empresa_ids()));
+with check (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "facturas_subidas_update_own"
 on public.facturas_subidas for update
-using (empresa_id = any(public.mis_empresa_ids()))
-with check (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()))
+with check (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "facturas_subidas_delete_own"
 on public.facturas_subidas for delete
-using (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "factura_lineas_select_own"
 on public.factura_lineas for select
-using (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "factura_lineas_insert_own"
 on public.factura_lineas for insert
-with check (empresa_id = any(public.mis_empresa_ids()));
+with check (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "factura_lineas_update_own"
 on public.factura_lineas for update
-using (empresa_id = any(public.mis_empresa_ids()))
-with check (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()))
+with check (empresa_id in (select public.mis_empresa_ids()));
 
 create policy "factura_lineas_delete_own"
 on public.factura_lineas for delete
-using (empresa_id = any(public.mis_empresa_ids()));
+using (empresa_id in (select public.mis_empresa_ids()));
 
 -- ---------------------------------------------------------------------------
 -- 4. Storage bucket privado para facturas
@@ -136,21 +136,21 @@ create policy "facturas_storage_select_own"
 on storage.objects for select to authenticated
 using (
   bucket_id = 'facturas'
-  and (storage.foldername(name))[1]::uuid = any(public.mis_empresa_ids())
+  and (storage.foldername(name))[1]::uuid in (select public.mis_empresa_ids())
 );
 
 create policy "facturas_storage_insert_own"
 on storage.objects for insert to authenticated
 with check (
   bucket_id = 'facturas'
-  and (storage.foldername(name))[1]::uuid = any(public.mis_empresa_ids())
+  and (storage.foldername(name))[1]::uuid in (select public.mis_empresa_ids())
 );
 
 create policy "facturas_storage_delete_own"
 on storage.objects for delete to authenticated
 using (
   bucket_id = 'facturas'
-  and (storage.foldername(name))[1]::uuid = any(public.mis_empresa_ids())
+  and (storage.foldername(name))[1]::uuid in (select public.mis_empresa_ids())
 );
 
 -- ---------------------------------------------------------------------------
