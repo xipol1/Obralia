@@ -122,3 +122,55 @@ export function getCapituloMeta(key: CapituloSistema | null | undefined): Capitu
   if (!key) return null;
   return CAPITULOS_META.find((c) => c.key === key) ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// Sesión 4: Facturas OCR (tablas no presentes aún en types/database.ts)
+// ---------------------------------------------------------------------------
+
+export type EstadoFacturaSubida =
+  | "pendiente"
+  | "procesando"
+  | "procesada"
+  | "error";
+
+/** Cabecera de una factura subida (tabla facturas_subidas) */
+export interface FacturaSubida {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  empresa_id: string;
+  subida_por: string | null;
+  storage_path: string;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  estado: EstadoFacturaSubida;
+  error_mensaje: string | null;
+  procesada_at: string | null;
+  proveedor_nombre: string | null;
+  proveedor_nif: string | null;
+  numero_factura: string | null;
+  fecha_factura: string | null;
+  total_sin_iva: number | null;
+  total_iva: number | null;
+  total_con_iva: number | null;
+  moneda: string | null;
+}
+
+/** Línea extraída de una factura (tabla factura_lineas) */
+export interface FacturaLinea {
+  id: string;
+  created_at: string;
+  factura_id: string;
+  empresa_id: string;
+  orden: number;
+  codigo_articulo: string | null;
+  descripcion: string;
+  cantidad: number | null;
+  unidad: string | null;
+  precio_unitario: number | null;
+  importe_linea: number | null;
+  tipo_iva: number | null;
+  partida_biblioteca_id: string | null;
+  importada_at: string | null;
+}

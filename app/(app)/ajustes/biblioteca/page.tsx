@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   BookOpen,
   Copy,
+  ScanText,
   Droplets,
   Grid3x3,
   Hammer,
@@ -286,17 +287,22 @@ export default function BibliotecaPage() {
         ))}
       </div>
 
-      {/* CTA Nueva partida */}
-      <div className="mt-4">
+      {/* CTA Nueva partida + Importar */}
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <Button
           variant="accent"
           size="lg"
-          className="w-full"
           onClick={() => setCrearOpen(true)}
         >
           <Plus className="h-4 w-4" />
           Nueva partida
         </Button>
+        <Link href="/ajustes/biblioteca/importar" className="contents">
+          <Button variant="outline" size="lg" className="w-full">
+            <ScanText className="h-4 w-4" />
+            Importar facturas
+          </Button>
+        </Link>
       </div>
 
       {/* Lista */}
