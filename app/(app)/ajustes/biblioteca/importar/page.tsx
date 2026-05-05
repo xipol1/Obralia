@@ -105,31 +105,45 @@ export default function ImportarFacturasPage() {
 
   const subirMut = useMutation({
     mutationFn: async (file: File) => {
-      if (!empresaId || !userId) throw new Error('Sin empresa')
+      if (!empresaId || !userId) throw new Error('Sin empresa asociada al usuario')
 
       // Validación cliente
       const parsed = subirFacturaSchema.safeParse({
         filename: file.name,
-        mime_type: file.type,
+        mime_type: file.type || 'application/octet-stream',
         size_bytes: file.size,
       })
       if (!parsed.success) {
-        throw new Error(parsed.error.issues[0]?.message ?? 'Archivo no válido')
+        const first = parsed.error.issues?.[0]
+        throw new Error(first?.message ?? 'Archivo no válido')
       }
 
-      // Genera path con un UUID temporal del lado cliente
-      const facturaId = crypto.randomUUID()
+      const facturaId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const path = buildFacturaPath(empresaId, facturaId, file.name)
 
-      await uploadFacturaArchivo(supabase, path, file)
+      try {
+        await uploadFacturaArchivo(supabase, path, file)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        throw new Error(`Subida a Storage falló: ${msg}`)
+      }
 
-      const factura = await crearFacturaSubida(supabase, empresaId, {
-        storage_path: path,
-        original_filename: file.name,
-        mime_type: file.type,
-        size_bytes: file.size,
-        subida_por: userId,
-      })
+      let factura
+      try {
+        factura = await crearFacturaSubida(supabase, empresaId, {
+          storage_path: path,
+          original_filename: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size_bytes: file.size,
+          subida_por: userId,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        throw new Error(`Crear registro falló: ${msg}`)
+      }
 
       // Lanza el OCR async (no bloquea)
       fetch(`/api/facturas/${factura.id}/procesar`, { method: 'POST' }).catch(
