@@ -46,3 +46,16 @@ export const otpSchema = z.object({
 });
 
 export type OtpFormData = z.infer<typeof otpSchema>;
+
+/**
+ * Login con email + contraseña (sin SMS).
+ */
+export const emailPasswordSchema = z.object({
+  email: z.string().min(1, "El email es obligatorio").email("Email no válido"),
+  password: z
+    .string()
+    .min(6, "Mínimo 6 caracteres")
+    .max(72, "Máximo 72 caracteres"),
+});
+
+export type EmailPasswordFormData = z.infer<typeof emailPasswordSchema>;
