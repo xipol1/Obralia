@@ -48,3 +48,6 @@ claude_code_prompt_constructor_mvp.md
 next-env.d.ts
 
 .vercel
+
+supabase/.temp/
+supabase/.branches/
