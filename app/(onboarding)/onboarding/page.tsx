@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { empresaSchema, type EmpresaFormData } from '@/schemas/empresa'
-import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/toast'
+import { crearEmpresaConMembresia } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label'
 export default function OnboardingEmpresaPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClient()
   const [saving, setSaving] = useState(false)
 
   const {
@@ -38,65 +37,20 @@ export default function OnboardingEmpresaPage() {
   async function onSubmit(data: EmpresaFormData) {
     setSaving(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      const result = await crearEmpresaConMembresia(data)
+      if (!result.ok) {
         toast({
-          title: 'Sesion expirada',
-          description: 'Inicia sesion de nuevo',
+          title: 'No pudimos crear la empresa',
+          description: result.error,
           variant: 'destructive',
         })
         return
       }
-
-      // Create empresa
-      const { data: empresa, error: empresaError } = await supabase
-        .from('empresas')
-        .insert({
-          razon_social: data.razon_social,
-          nif: data.nif,
-          direccion: data.direccion || null,
-          codigo_postal: data.codigo_postal || null,
-          municipio: data.municipio || null,
-          provincia: data.provincia || null,
-          email: data.email || null,
-          telefono: data.telefono || null,
-        })
-        .select('id')
-        .single()
-
-      if (empresaError) {
-        toast({
-          title: 'Error al crear la empresa',
-          description: empresaError.message,
-          variant: 'destructive',
-        })
-        return
-      }
-
-      // Create miembro row linking user to empresa as owner
-      const { error: miembroError } = await supabase.from('miembros').insert({
-        empresa_id: empresa.id,
-        user_id: user.id,
-        rol: 'owner',
-      })
-
-      if (miembroError) {
-        toast({
-          title: 'Error al vincular tu cuenta',
-          description: miembroError.message,
-          variant: 'destructive',
-        })
-        return
-      }
-
       router.push('/onboarding/logo')
-    } catch {
+    } catch (e) {
       toast({
         title: 'Error inesperado',
-        description: 'Intentalo de nuevo',
+        description: e instanceof Error ? e.message : 'Inténtalo de nuevo',
         variant: 'destructive',
       })
     } finally {
