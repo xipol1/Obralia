@@ -12,7 +12,7 @@ import {
   type FacturaExtraida,
 } from '@/schemas/factura'
 
-const MODEL = 'gemini-1.5-flash'
+const MODEL = 'gemini-2.0-flash'
 
 const SYSTEM_INSTRUCTION = `Eres un asistente especializado en extraer datos de facturas de material de obra y construcción en España.
 

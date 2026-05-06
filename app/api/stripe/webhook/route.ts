@@ -5,22 +5,28 @@ import type Stripe from 'stripe'
 
 export const runtime = 'nodejs'
 
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET!
-
-const PRICE_TO_PLAN: Record<string, string> = {
-  [process.env.STRIPE_PRICE_BASICO_MONTHLY!]: 'basico',
-  [process.env.STRIPE_PRICE_BASICO_YEARLY!]: 'basico',
-  [process.env.STRIPE_PRICE_PRO_MONTHLY!]: 'pro',
-  [process.env.STRIPE_PRICE_PRO_YEARLY!]: 'pro',
-  [process.env.STRIPE_PRICE_EQUIPO_MONTHLY!]: 'equipo',
-  [process.env.STRIPE_PRICE_EQUIPO_YEARLY!]: 'equipo',
+function getPriceToPlan(): Record<string, string> {
+  const map: Record<string, string> = {}
+  const pairs: [string | undefined, string][] = [
+    [process.env.STRIPE_PRICE_BASICO_MONTHLY, 'basico'],
+    [process.env.STRIPE_PRICE_BASICO_YEARLY, 'basico'],
+    [process.env.STRIPE_PRICE_PRO_MONTHLY, 'pro'],
+    [process.env.STRIPE_PRICE_PRO_YEARLY, 'pro'],
+    [process.env.STRIPE_PRICE_EQUIPO_MONTHLY, 'equipo'],
+    [process.env.STRIPE_PRICE_EQUIPO_YEARLY, 'equipo'],
+  ]
+  for (const [priceId, plan] of pairs) {
+    if (priceId) map[priceId] = plan
+  }
+  return map
 }
 
 export async function POST(request: Request) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')
 
-  if (!sig) {
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!sig || !webhookSecret) {
     return NextResponse.json(
       { error: 'Falta la firma de Stripe' },
       { status: 400 },
@@ -30,7 +36,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, STRIPE_WEBHOOK_SECRET)
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
   } catch (err) {
     console.error('Error al verificar webhook de Stripe:', err)
     return NextResponse.json(
@@ -50,7 +56,7 @@ export async function POST(request: Request) {
             ? subscription.customer
             : subscription.customer.id
         const priceId = subscription.items.data[0]?.price.id
-        const plan = PRICE_TO_PLAN[priceId] || 'basico'
+        const plan = getPriceToPlan()[priceId] || 'basico'
 
         const { error } = await supabase
           .from('empresas')
@@ -73,7 +79,7 @@ export async function POST(request: Request) {
             ? subscription.customer
             : subscription.customer.id
         const priceId = subscription.items.data[0]?.price.id
-        const plan = PRICE_TO_PLAN[priceId] || 'basico'
+        const plan = getPriceToPlan()[priceId] || 'basico'
 
         const { error } = await supabase
           .from('empresas')

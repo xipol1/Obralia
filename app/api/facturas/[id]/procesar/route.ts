@@ -32,8 +32,13 @@ export async function POST(
 
   await actualizarEstado(supabase, facturaId, 'procesando', {}, null)
 
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    const mensaje = 'GOOGLE_AI_API_KEY no configurada. Configúrala en Vercel → Settings → Environment Variables.'
+    await actualizarEstado(supabase, facturaId, 'error', {}, mensaje)
+    return NextResponse.json({ error: mensaje }, { status: 500 })
+  }
+
   try {
-    // El usuario ya tiene RLS para descargar sus propios archivos del bucket
     const { bytes, mimeType } = await descargarFacturaArchivo(
       supabase,
       factura.storage_path,

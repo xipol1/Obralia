@@ -15,7 +15,6 @@ export async function POST(request: Request) {
 
     const supabase = await createServerSupabaseClient()
 
-    // Verify the user owns this empresa
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
     }
 
-    // Get empresa data for Stripe customer creation
     const { data: empresa, error: empresaError } = await supabase
       .from('empresas')
       .select('razon_social, email, telefono')
@@ -49,24 +47,30 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create Stripe customer
-    const customer = await createStripeCustomer({
-      name: empresa.razon_social,
-      email: empresa.email || undefined,
-      phone: empresa.telefono || undefined,
-      metadata: { empresa_id },
-    })
+    let stripeCustomerId: string | null = null
+    if (process.env.STRIPE_SECRET_KEY) {
+      try {
+        const customer = await createStripeCustomer({
+          name: empresa.razon_social,
+          email: empresa.email || undefined,
+          phone: empresa.telefono || undefined,
+          metadata: { empresa_id },
+        })
+        stripeCustomerId = customer.id
+      } catch (stripeErr) {
+        console.warn('Stripe customer creation failed, continuing without it:', stripeErr)
+      }
+    }
 
-    // Update empresa with Stripe info and trial
     const trialEndsAt = new Date()
     trialEndsAt.setDate(trialEndsAt.getDate() + 14)
 
     const { error: updateError } = await supabase
       .from('empresas')
       .update({
-        stripe_customer_id: customer.id,
         trial_ends_at: trialEndsAt.toISOString(),
-        plan: 'trial',
+        plan: 'trial' as const,
+        ...(stripeCustomerId && { stripe_customer_id: stripeCustomerId }),
       })
       .eq('id', empresa_id)
 
