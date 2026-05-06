@@ -16,7 +16,7 @@ export async function updateSession(request: NextRequest) {
     const isLoggedIn = request.cookies.get('obralia-demo')?.value === '1'
     const publicPaths = ['/', '/login', '/verificar']
     const isPublicPath = publicPaths.some(
-      (p) => path === p || path.startsWith('/api/stripe/webhook'),
+      (p) => path === p || path.startsWith('/api/stripe/webhook') || path.startsWith('/api/setup'),
     )
 
     if (!isLoggedIn && !isPublicPath) {
@@ -61,7 +61,7 @@ export async function updateSession(request: NextRequest) {
 
   const publicPaths = ['/', '/login', '/verificar']
   const isPublicPath = publicPaths.some(
-    (p) => path === p || path.startsWith('/api/stripe/webhook'),
+    (p) => path === p || path.startsWith('/api/stripe/webhook') || path.startsWith('/api/setup'),
   )
 
   if (!user && !isPublicPath) {
