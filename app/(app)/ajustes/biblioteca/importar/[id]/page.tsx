@@ -118,7 +118,7 @@ export default function FacturaDetallePage() {
               : 'Vuelve atrás e inténtalo de nuevo'
           }
         />
-        <Link href="/ajustes/biblioteca/importar" className="mt-4 inline-block">
+        <Link href="/facturas?tab=recibidas" className="mt-4 inline-block">
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4" />
             Volver
@@ -157,7 +157,7 @@ export default function FacturaDetallePage() {
       {/* Header */}
       <div className="mb-4 flex items-center gap-3">
         <Link
-          href="/ajustes/biblioteca/importar"
+          href="/facturas?tab=recibidas"
           className="flex h-10 w-10 items-center justify-center rounded-[--radius] text-[--color-muted-foreground] transition-colors hover:bg-[--color-muted]"
           aria-label="Volver"
         >

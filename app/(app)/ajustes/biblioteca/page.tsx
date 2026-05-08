@@ -297,7 +297,7 @@ export default function BibliotecaPage() {
           <Plus className="h-4 w-4" />
           Nueva partida
         </Button>
-        <Link href="/ajustes/biblioteca/importar" className="contents">
+        <Link href="/facturas?tab=recibidas" className="contents">
           <Button variant="outline" size="lg" className="w-full">
             <ScanText className="h-4 w-4" />
             Importar facturas
