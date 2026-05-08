@@ -44,9 +44,13 @@ export default function EditClientePage() {
     reset,
     formState: { errors },
   } = useForm<ClienteFormData>({
-    resolver: zodResolver(clienteSchema),
+    // biome-ignore lint/suspicious/noExplicitAny: zod resolver typing con defaults
+    resolver: zodResolver(clienteSchema) as any,
     defaultValues: {
       tipo: 'particular',
+      tipo_fiscal: 'particular',
+      aplica_retencion_irpf: false,
+      aplica_isp_construccion: false,
       nombre: '',
       apellidos: '',
       razon_social: '',
@@ -57,6 +61,15 @@ export default function EditClientePage() {
       codigo_postal: '',
       municipio: '',
       provincia: '',
+      contacto_nombre: '',
+      contacto_telefono: '',
+      contacto_email: '',
+      administrador_nombre: '',
+      administrador_email: '',
+      direccion_facturacion: '',
+      cp_facturacion: '',
+      municipio_facturacion: '',
+      provincia_facturacion: '',
       notas: '',
     },
   })
@@ -82,6 +95,18 @@ export default function EditClientePage() {
 
       reset({
         tipo: data.tipo as 'particular' | 'empresa',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        tipo_fiscal: ((data as any).tipo_fiscal ??
+          (data.tipo === 'empresa' ? 'empresa' : 'particular')) as
+          | 'particular'
+          | 'autonomo'
+          | 'empresa'
+          | 'comunidad'
+          | 'administracion',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        aplica_retencion_irpf: !!(data as any).aplica_retencion_irpf,
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        aplica_isp_construccion: !!(data as any).aplica_isp_construccion,
         nombre: data.nombre || '',
         apellidos: data.apellidos || '',
         razon_social: data.razon_social || '',
@@ -92,6 +117,24 @@ export default function EditClientePage() {
         codigo_postal: data.codigo_postal || '',
         municipio: data.municipio || '',
         provincia: data.provincia || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        contacto_nombre: (data as any).contacto_nombre || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        contacto_telefono: (data as any).contacto_telefono || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        contacto_email: (data as any).contacto_email || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        administrador_nombre: (data as any).administrador_nombre || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        administrador_email: (data as any).administrador_email || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        direccion_facturacion: (data as any).direccion_facturacion || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        cp_facturacion: (data as any).cp_facturacion || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        municipio_facturacion: (data as any).municipio_facturacion || '',
+        // biome-ignore lint/suspicious/noExplicitAny: nuevas columnas
+        provincia_facturacion: (data as any).provincia_facturacion || '',
         notas: data.notas || '',
       })
       setLoading(false)
@@ -106,6 +149,9 @@ export default function EditClientePage() {
         .from('clientes')
         .update({
           tipo: data.tipo,
+          tipo_fiscal: data.tipo_fiscal,
+          aplica_retencion_irpf: data.aplica_retencion_irpf,
+          aplica_isp_construccion: data.aplica_isp_construccion,
           nombre: data.nombre,
           apellidos: data.apellidos || null,
           razon_social: data.razon_social || null,
@@ -116,6 +162,15 @@ export default function EditClientePage() {
           codigo_postal: data.codigo_postal || null,
           municipio: data.municipio || null,
           provincia: data.provincia || null,
+          contacto_nombre: data.contacto_nombre || null,
+          contacto_telefono: data.contacto_telefono || null,
+          contacto_email: data.contacto_email || null,
+          administrador_nombre: data.administrador_nombre || null,
+          administrador_email: data.administrador_email || null,
+          direccion_facturacion: data.direccion_facturacion || null,
+          cp_facturacion: data.cp_facturacion || null,
+          municipio_facturacion: data.municipio_facturacion || null,
+          provincia_facturacion: data.provincia_facturacion || null,
           notas: data.notas || null,
         })
         .eq('id', params.id)

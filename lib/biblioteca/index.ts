@@ -63,11 +63,16 @@ export async function buscarPartidas(
 
   if (params.query && params.query.trim().length > 0) {
     const term = params.query.trim()
-    // ILIKE en descripcion o codigo, o tag exacto
-    // Escapamos % y _ para evitar wildcard injection
     const safe = term.replace(/[%_]/g, '\\$&')
+    // Normalizamos en cliente igual que la columna generada `descripcion_norm`
+    // (lowercase + sin acentos) para que la comparación encuentre tanto
+    // "demolicion" como "Demolición".
+    const norm = safe
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
     q = q.or(
-      `descripcion.ilike.%${safe}%,codigo.ilike.%${safe}%,tags.cs.{${term}}`,
+      `descripcion_norm.ilike.%${norm}%,codigo.ilike.%${safe}%,tags.cs.{${term}}`,
     )
   }
 

@@ -153,13 +153,29 @@ describe('buscarPartidas', () => {
     })
 
     const orQuery = findCalls(state, 'or').find((c) =>
-      String(c.args[0]).includes('descripcion.ilike'),
+      String(c.args[0]).includes('descripcion_norm.ilike'),
     )
     expect(orQuery).toBeDefined()
     const expr = String(orQuery?.args[0])
-    expect(expr).toContain('descripcion.ilike.%alicatado%')
+    // Búsqueda insensible a acentos: comparamos contra descripcion_norm
+    expect(expr).toContain('descripcion_norm.ilike.%alicatado%')
     expect(expr).toContain('codigo.ilike.%alicatado%')
     expect(expr).toContain('tags.cs.{alicatado}')
+  })
+
+  it('normaliza la query a sin acentos para descripcion_norm', async () => {
+    const { client, state } = createMockSupabase({ partidas_biblioteca: [] })
+    await buscarPartidas(client, {
+      empresaId: EMPRESA_ID,
+      query: 'demolición',
+    })
+
+    const orQuery = findCalls(state, 'or').find((c) =>
+      String(c.args[0]).includes('descripcion_norm.ilike'),
+    )
+    expect(orQuery).toBeDefined()
+    const expr = String(orQuery?.args[0])
+    expect(expr).toContain('descripcion_norm.ilike.%demolicion%')
   })
 
   it('ordena partidas de empresa antes que las de sistema', async () => {

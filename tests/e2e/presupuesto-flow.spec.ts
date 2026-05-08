@@ -90,5 +90,39 @@ test.describe('Flujo completo de presupuesto', () => {
 
     // 11. Verificar botón WhatsApp aparece
     await expect(page.getByRole('link', { name: /whatsapp/i })).toBeVisible()
+
+    // 12. Editar presupuesto
+    await page.getByRole('link', { name: /editar/i }).click()
+    await expect(page).toHaveURL(/editar$/)
+    const tituloInput = page.getByLabel(/título/i)
+    await tituloInput.fill('Reforma baño test (editado)')
+    await page.getByRole('button', { name: /guardar cambios/i }).click()
+    await expect(page.getByText('Reforma baño test (editado)')).toBeVisible()
+
+    // 13. Firmar el presupuesto
+    await page.getByRole('button', { name: /firmar/i }).click()
+    await page.getByLabel(/nombre y apellidos/i).fill('María García')
+    // Trazo mínimo en el canvas: arrastrar de un lado a otro.
+    const canvas = page.locator('canvas').first()
+    const box = await canvas.boundingBox()
+    if (box) {
+      await page.mouse.move(box.x + 20, box.y + box.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(box.x + box.width - 20, box.y + box.height / 2, {
+        steps: 10,
+      })
+      await page.mouse.up()
+    }
+    await page.getByRole('button', { name: /guardar firma/i }).click()
+    await expect(page.getByText(/presupuesto firmado/i)).toBeVisible({
+      timeout: 10000,
+    })
+    await expect(page.getByText('Aceptado')).toBeVisible()
+
+    // 14. Convertir a factura
+    await page.getByRole('button', { name: /crear factura/i }).click()
+    await expect(page).toHaveURL(/\/facturas\/[0-9a-f-]+$/i, { timeout: 15000 })
+    await expect(page.getByText(/factura/i).first()).toBeVisible()
+    await expect(page.getByText('Reforma baño test (editado)')).toBeVisible()
   })
 })

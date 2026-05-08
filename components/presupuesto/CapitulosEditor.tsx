@@ -10,6 +10,7 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  GripVertical,
   MoreVertical,
   Plus,
   Trash2,
@@ -118,6 +119,10 @@ export function CapitulosEditor({
   >(null)
   const [dialogMenu, setDialogMenu] = React.useState<number | null>(null)
 
+  // Drag & drop nativo (sólo desktop). En móvil seguimos usando ↑/↓ del menú.
+  const [dragFromIdx, setDragFromIdx] = React.useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null)
+
   const handleNuevoCapitulo = (
     nombre: string,
     capituloSistema: CapituloSistema | null,
@@ -144,28 +149,55 @@ export function CapitulosEditor({
   return (
     <div className="space-y-3">
       {fields.map((field, idx) => (
-        <CapituloItem
+        <div
           key={field.id}
-          idx={idx}
-          control={control}
-          register={register}
-          empresaId={empresaId}
-          capituloIvaDefault={capituloIvaDefault}
-          abierto={!!abierto[idx]}
-          onToggle={() =>
-            setAbierto((s) => ({ ...s, [idx]: !s[idx] }))
+          onDragOver={(e) => {
+            if (dragFromIdx === null) return
+            e.preventDefault()
+            if (dragOverIdx !== idx) setDragOverIdx(idx)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            if (dragFromIdx !== null && dragFromIdx !== idx) {
+              move(dragFromIdx, idx)
+            }
+            setDragFromIdx(null)
+            setDragOverIdx(null)
+          }}
+          className={
+            dragOverIdx === idx && dragFromIdx !== null && dragFromIdx !== idx
+              ? 'rounded-[--radius] outline outline-2 outline-[--color-primary]'
+              : undefined
           }
-          onMenu={() => setDialogMenu(idx)}
-          onMoveUp={() => idx > 0 && move(idx, idx - 1)}
-          onMoveDown={() =>
-            idx < fields.length - 1 && move(idx, idx + 1)
-          }
-          onBorrar={() => handleBorrar(idx)}
-          // biome-ignore lint/suspicious/noExplicitAny: campo genérico
-          fieldData={field as any}
-          // biome-ignore lint/suspicious/noExplicitAny: callback genérico de update
-          updateField={(patch) => update(idx, patch as any)}
-        />
+        >
+          <CapituloItem
+            idx={idx}
+            control={control}
+            register={register}
+            empresaId={empresaId}
+            capituloIvaDefault={capituloIvaDefault}
+            abierto={!!abierto[idx]}
+            onToggle={() =>
+              setAbierto((s) => ({ ...s, [idx]: !s[idx] }))
+            }
+            onMenu={() => setDialogMenu(idx)}
+            onMoveUp={() => idx > 0 && move(idx, idx - 1)}
+            onMoveDown={() =>
+              idx < fields.length - 1 && move(idx, idx + 1)
+            }
+            onBorrar={() => handleBorrar(idx)}
+            // biome-ignore lint/suspicious/noExplicitAny: campo genérico
+            fieldData={field as any}
+            // biome-ignore lint/suspicious/noExplicitAny: callback genérico de update
+            updateField={(patch) => update(idx, patch as any)}
+            onDragStart={() => setDragFromIdx(idx)}
+            onDragEnd={() => {
+              setDragFromIdx(null)
+              setDragOverIdx(null)
+            }}
+            isDragging={dragFromIdx === idx}
+          />
+        </div>
       ))}
 
       {/* CTA añadir capítulo */}
@@ -311,6 +343,9 @@ interface CapituloItemProps {
   onBorrar: () => void
   fieldData: CapituloFormItem
   updateField: (patch: CapituloFormItem) => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
+  isDragging?: boolean
 }
 
 function CapituloItem({
@@ -323,6 +358,9 @@ function CapituloItem({
   onToggle,
   onMenu,
   fieldData,
+  onDragStart,
+  onDragEnd,
+  isDragging,
 }: CapituloItemProps) {
   const partidasArray = useFieldArray({
     control,
@@ -346,9 +384,28 @@ function CapituloItem({
   const [selectorOpen, setSelectorOpen] = React.useState(false)
 
   return (
-    <section className="overflow-hidden rounded-[--radius] border border-[--color-border] bg-[--color-card]">
+    <section
+      className={cn(
+        'overflow-hidden rounded-[--radius] border border-[--color-border] bg-[--color-card] transition-opacity',
+        isDragging && 'opacity-50',
+      )}
+    >
       {/* Cabecera */}
       <header className="flex items-center gap-2 border-b border-[--color-border] bg-[--color-muted]/40 p-3">
+        {/* Handle drag (sólo desktop) */}
+        <button
+          type="button"
+          aria-label="Arrastra para reordenar"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'move'
+            onDragStart?.()
+          }}
+          onDragEnd={() => onDragEnd?.()}
+          className="hidden cursor-grab touch-none rounded-md p-1 text-[--color-muted-foreground] hover:bg-[--color-muted] active:cursor-grabbing sm:inline-flex"
+        >
+          <GripVertical className="h-5 w-5" />
+        </button>
         <button
           type="button"
           onClick={onToggle}

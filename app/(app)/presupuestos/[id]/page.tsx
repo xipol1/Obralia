@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Pencil,
@@ -21,8 +21,11 @@ import {
   BrickWall,
   Wind,
   Zap,
+  PenLine,
+  Receipt,
   type LucideIcon,
 } from 'lucide-react'
+import { FirmaDialog } from '@/components/presupuesto/FirmaDialog'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -101,7 +104,10 @@ export default function PresupuestoDetailPage() {
   const params = useParams<{ id: string }>()
   const supabase = useMemo(() => createClient(), [])
   const { toast } = useToast()
+  const queryClient = useQueryClient()
   const [generatingPdf, setGeneratingPdf] = useState(false)
+  const [firmaOpen, setFirmaOpen] = useState(false)
+  const [creandoFactura, setCreandoFactura] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['presupuesto', params.id],
@@ -127,6 +133,136 @@ export default function PresupuestoDetailPage() {
     if (!cliente) return 'Sin cliente'
     if (cliente.razon_social) return cliente.razon_social
     return [cliente.nombre, cliente.apellidos].filter(Boolean).join(' ') || 'Sin nombre'
+  }
+
+  async function handleConvertirAFactura() {
+    if (!data) return
+    setCreandoFactura(true)
+    try {
+      // biome-ignore lint/suspicious/noExplicitAny: supabase rels
+      const d = data as any
+      const { data: existing } = await supabase
+        .from('facturas')
+        .select('id')
+        .eq('presupuesto_id', d.id)
+        .maybeSingle()
+      if (existing) {
+        toast({
+          title: 'Ya existe una factura',
+          description: 'Te llevamos a la factura existente.',
+        })
+        window.location.href = `/facturas/${existing.id}`
+        return
+      }
+
+      const { siguienteNumero } = await import('@/lib/numbering')
+      const numero = await siguienteNumero(supabase, d.empresa_id, 'factura')
+
+      const hoy = new Date()
+      const dias = 30
+      const venc = new Date(hoy.getTime() + dias * 86400000)
+
+      const { data: factura, error } = await supabase
+        .from('facturas')
+        .insert({
+          empresa_id: d.empresa_id,
+          presupuesto_id: d.id,
+          cliente_id: d.cliente_id,
+          numero,
+          fecha_emision: hoy.toISOString().slice(0, 10),
+          fecha_devengo: hoy.toISOString().slice(0, 10),
+          base_imponible: d.base_imponible,
+          cuota_iva: d.cuota_iva,
+          total: d.total,
+          estado: 'emitida',
+          tipo_factura: 'normal',
+          titulo: d.titulo,
+          direccion_obra: d.direccion_obra,
+          tipo_iva_default: d.tipo_iva_default,
+          motivo_iva_reducido: d.motivo_iva_reducido,
+          notas_cliente: d.notas_cliente,
+          forma_pago: d.forma_pago,
+          // Propagar retención e ISP del presupuesto firmado
+          retencion_pct: d.retencion_pct ?? 0,
+          retencion_importe: d.retencion_importe ?? 0,
+          inversion_sujeto_pasivo: !!d.inversion_sujeto_pasivo,
+          motivo_isp: d.motivo_isp ?? null,
+          total_a_cobrar: d.total_a_cobrar ?? d.total,
+          // Ciclo de cobro: 30 días por defecto
+          dias_pago: dias,
+          fecha_vencimiento: venc.toISOString().slice(0, 10),
+          importe_cobrado: 0,
+          // biome-ignore lint/suspicious/noExplicitAny: db insert
+        } as any)
+        .select('id')
+        .single()
+      if (error || !factura) throw new Error(error?.message ?? 'Error creando factura')
+
+      // Copia capítulos
+      const mapeoCap = new Map<string, string>()
+      const caps = (d.presupuesto_capitulos ?? []) as Array<{
+        id: string
+        nombre: string
+        capitulo_sistema: CapituloSistema | null
+        orden: number
+      }>
+      for (const c of caps.slice().sort((a, b) => a.orden - b.orden)) {
+        const { data: nuevoCap, error: cErr } = await supabase
+          .from('factura_capitulos')
+          .insert({
+            factura_id: factura.id,
+            orden: c.orden,
+            nombre: c.nombre,
+            capitulo_sistema: c.capitulo_sistema,
+            // biome-ignore lint/suspicious/noExplicitAny: db insert
+          } as any)
+          .select('id')
+          .single()
+        if (cErr || !nuevoCap) throw new Error(cErr?.message ?? 'Error capítulo factura')
+        mapeoCap.set(c.id, nuevoCap.id)
+      }
+
+      const parts = (d.presupuesto_partidas ?? []) as Array<{
+        id: string
+        capitulo_id: string | null
+        partida_biblioteca_id?: string | null
+        orden: number
+        descripcion: string
+        unidad: string
+        cantidad: number
+        precio_unitario: number
+        tipo_iva: number
+      }>
+      const partInsert = parts.map((p) => ({
+        factura_id: factura.id,
+        capitulo_id: p.capitulo_id ? mapeoCap.get(p.capitulo_id) ?? null : null,
+        partida_biblioteca_id: p.partida_biblioteca_id ?? null,
+        orden: p.orden,
+        descripcion: p.descripcion,
+        unidad: p.unidad,
+        cantidad: Number(p.cantidad),
+        precio_unitario: Number(p.precio_unitario),
+        tipo_iva: p.tipo_iva,
+      }))
+      if (partInsert.length > 0) {
+        const { error: pErr } = await supabase
+          .from('factura_partidas')
+          // biome-ignore lint/suspicious/noExplicitAny: db insert
+          .insert(partInsert as any)
+        if (pErr) throw new Error(pErr.message)
+      }
+
+      toast({ title: 'Factura creada', description: `Nº ${numero}` })
+      window.location.href = `/facturas/${factura.id}`
+    } catch (err) {
+      toast({
+        title: 'Error al crear factura',
+        description: err instanceof Error ? err.message : 'Inténtalo de nuevo',
+        variant: 'destructive',
+      })
+    } finally {
+      setCreandoFactura(false)
+    }
   }
 
   async function handleGenerarPdf() {
@@ -392,25 +528,58 @@ export default function PresupuestoDetailPage() {
             <div className="flex justify-between text-sm">
               <span className="text-[--color-muted-foreground]">
                 IVA {data.tipo_iva_default ?? 21}%
+                {data.inversion_sujeto_pasivo && (
+                  <span className="ml-1 text-amber-600">(no se cobra · ISP)</span>
+                )}
               </span>
               <span className="tabular font-medium text-[--color-foreground]">
-                {formatCurrency(data.cuota_iva ?? 0)}
+                {data.inversion_sujeto_pasivo
+                  ? '—'
+                  : formatCurrency(data.cuota_iva ?? 0)}
               </span>
             </div>
-            {data.motivo_iva_reducido && (
+            {Number(data.retencion_pct ?? 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-[--color-muted-foreground]">
+                  Retención IRPF {data.retencion_pct}%
+                </span>
+                <span className="tabular font-medium text-red-600">
+                  −{formatCurrency(Number(data.retencion_importe ?? 0))}
+                </span>
+              </div>
+            )}
+            {data.motivo_iva_reducido && !data.inversion_sujeto_pasivo && (
               <p className="text-xs text-[--color-muted-foreground]">
                 {data.motivo_iva_reducido}
+              </p>
+            )}
+            {data.inversion_sujeto_pasivo && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {data.motivo_isp ||
+                  'Operación con inversión del sujeto pasivo (art. 84.Uno.2.f LIVA).'}
               </p>
             )}
             <div className="border-t border-[--color-border] pt-3">
               <div className="flex items-baseline justify-between">
                 <span className="text-base font-bold text-[--color-foreground]">
-                  Total
+                  {data.inversion_sujeto_pasivo ||
+                  Number(data.retencion_pct ?? 0) > 0
+                    ? 'Total a cobrar'
+                    : 'Total'}
                 </span>
                 <span className="tabular text-2xl font-bold text-[--color-accent-foreground]">
-                  {formatCurrency(data.total ?? 0)}
+                  {formatCurrency(
+                    Number(data.total_a_cobrar ?? data.total ?? 0),
+                  )}
                 </span>
               </div>
+              {(data.inversion_sujeto_pasivo ||
+                Number(data.retencion_pct ?? 0) > 0) && (
+                <div className="mt-1 flex justify-between text-xs text-[--color-muted-foreground]">
+                  <span>Total con IVA</span>
+                  <span>{formatCurrency(data.total ?? 0)}</span>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -450,6 +619,31 @@ export default function PresupuestoDetailPage() {
           </Card>
         )}
 
+        {/* Firma */}
+        {(data.firma_url || data.firma_cliente_nombre) && (
+          <Card className="p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[--color-muted-foreground]">
+              Firma del cliente
+            </h3>
+            {data.firma_url && (
+              // biome-ignore lint/performance/noImgElement: signed URL externa
+              <img
+                src={data.firma_url}
+                alt="Firma del cliente"
+                className="mt-3 max-h-32 rounded border border-[--color-border] bg-white p-2"
+              />
+            )}
+            <div className="mt-2 text-sm text-[--color-foreground]">
+              {data.firma_cliente_nombre ?? '—'}
+            </div>
+            {data.firma_cliente_at && (
+              <div className="text-xs text-[--color-muted-foreground]">
+                Firmado el {formatDate(data.firma_cliente_at)}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Notas y exclusiones */}
         {(data.notas_cliente || data.exclusiones) && (
           <Card className="space-y-4 p-5">
@@ -479,7 +673,7 @@ export default function PresupuestoDetailPage() {
 
       {/* Sticky bottom action bar */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[--color-border]/60 bg-[--color-card]/95 backdrop-blur supports-[backdrop-filter]:bg-[--color-card]/80">
-        <div className="mx-auto flex max-w-lg gap-2 px-4 py-3">
+        <div className="mx-auto flex max-w-lg flex-wrap gap-2 px-4 py-3">
           <Link
             href={`/presupuestos/${params.id}/editar`}
             className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-[--radius] border-2 border-[--color-border] bg-[--color-card] text-sm font-semibold text-[--color-foreground] transition-colors hover:bg-[--color-muted]"
@@ -514,8 +708,55 @@ export default function PresupuestoDetailPage() {
               Enviar
             </Link>
           )}
+          {!data.firma_url && (
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setFirmaOpen(true)}
+            >
+              <PenLine className="h-4 w-4" />
+              Firmar
+            </Button>
+          )}
+          {data.firma_url && estado === 'aceptado' && (
+            <Button
+              variant="accent"
+              className="flex-1"
+              onClick={handleConvertirAFactura}
+              disabled={creandoFactura}
+            >
+              {creandoFactura ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creando…
+                </>
+              ) : (
+                <>
+                  <Receipt className="h-4 w-4" />
+                  Crear factura
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
+
+      <FirmaDialog
+        open={firmaOpen}
+        onOpenChange={setFirmaOpen}
+        presupuestoId={params.id}
+        // biome-ignore lint/suspicious/noExplicitAny: supabase row
+        empresaId={(data as any).empresa_id}
+        defaultNombre={
+          cliente
+            ? cliente.razon_social ??
+              [cliente.nombre, cliente.apellidos].filter(Boolean).join(' ')
+            : ''
+        }
+        onFirmado={() => {
+          queryClient.invalidateQueries({ queryKey: ['presupuesto', params.id] })
+        }}
+      />
     </div>
   )
 }

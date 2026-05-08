@@ -60,6 +60,11 @@ export const presupuestoSchema = z
     forma_pago: z.string().max(500).optional().or(z.literal('')),
     plazo_ejecucion_dias: z.coerce.number().int().positive().optional().or(z.literal('')),
     garantia_meses: z.coerce.number().int().positive().optional().or(z.literal('')),
+    // Retención IRPF: 0 (cliente particular), 7 (autónomo nuevo), 15 (general)
+    retencion_pct: z.coerce.number().min(0).max(100).default(0),
+    // Inversión sujeto pasivo en construcción (art. 84.Uno.2.f LIVA)
+    inversion_sujeto_pasivo: z.boolean().default(false),
+    motivo_isp: z.string().max(500).optional().or(z.literal('')),
     capitulos: z.array(capituloSchema).default([]),
   })
   .refine(

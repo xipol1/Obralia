@@ -147,6 +147,23 @@ export type Database = {
           updated_at: string;
           empresa_id: string;
           tipo: "particular" | "empresa";
+          tipo_fiscal:
+            | "particular"
+            | "autonomo"
+            | "empresa"
+            | "comunidad"
+            | "administracion";
+          aplica_retencion_irpf: boolean;
+          aplica_isp_construccion: boolean;
+          contacto_nombre: string | null;
+          contacto_telefono: string | null;
+          contacto_email: string | null;
+          administrador_nombre: string | null;
+          administrador_email: string | null;
+          direccion_facturacion: string | null;
+          cp_facturacion: string | null;
+          municipio_facturacion: string | null;
+          provincia_facturacion: string | null;
           nombre: string | null;
           apellidos: string | null;
           razon_social: string | null;
@@ -165,6 +182,23 @@ export type Database = {
           updated_at?: string;
           empresa_id: string;
           tipo?: "particular" | "empresa";
+          tipo_fiscal?:
+            | "particular"
+            | "autonomo"
+            | "empresa"
+            | "comunidad"
+            | "administracion";
+          aplica_retencion_irpf?: boolean;
+          aplica_isp_construccion?: boolean;
+          contacto_nombre?: string | null;
+          contacto_telefono?: string | null;
+          contacto_email?: string | null;
+          administrador_nombre?: string | null;
+          administrador_email?: string | null;
+          direccion_facturacion?: string | null;
+          cp_facturacion?: string | null;
+          municipio_facturacion?: string | null;
+          provincia_facturacion?: string | null;
           nombre?: string | null;
           apellidos?: string | null;
           razon_social?: string | null;
@@ -183,6 +217,23 @@ export type Database = {
           updated_at?: string;
           empresa_id?: string;
           tipo?: "particular" | "empresa";
+          tipo_fiscal?:
+            | "particular"
+            | "autonomo"
+            | "empresa"
+            | "comunidad"
+            | "administracion";
+          aplica_retencion_irpf?: boolean;
+          aplica_isp_construccion?: boolean;
+          contacto_nombre?: string | null;
+          contacto_telefono?: string | null;
+          contacto_email?: string | null;
+          administrador_nombre?: string | null;
+          administrador_email?: string | null;
+          direccion_facturacion?: string | null;
+          cp_facturacion?: string | null;
+          municipio_facturacion?: string | null;
+          provincia_facturacion?: string | null;
           nombre?: string | null;
           apellidos?: string | null;
           razon_social?: string | null;
@@ -238,6 +289,14 @@ export type Database = {
           enviado_at: string | null;
           aceptado_at: string | null;
           firma_url: string | null;
+          firma_cliente_nombre: string | null;
+          firma_cliente_at: string | null;
+          serie: string | null;
+          retencion_pct: number;
+          retencion_importe: number;
+          inversion_sujeto_pasivo: boolean;
+          motivo_isp: string | null;
+          total_a_cobrar: number;
         };
         Insert: {
           id?: string;
@@ -271,6 +330,14 @@ export type Database = {
           enviado_at?: string | null;
           aceptado_at?: string | null;
           firma_url?: string | null;
+          firma_cliente_nombre?: string | null;
+          firma_cliente_at?: string | null;
+          serie?: string | null;
+          retencion_pct?: number;
+          retencion_importe?: number;
+          inversion_sujeto_pasivo?: boolean;
+          motivo_isp?: string | null;
+          total_a_cobrar?: number;
         };
         Update: {
           id?: string;
@@ -304,6 +371,14 @@ export type Database = {
           enviado_at?: string | null;
           aceptado_at?: string | null;
           firma_url?: string | null;
+          firma_cliente_nombre?: string | null;
+          firma_cliente_at?: string | null;
+          serie?: string | null;
+          retencion_pct?: number;
+          retencion_importe?: number;
+          inversion_sujeto_pasivo?: boolean;
+          motivo_isp?: string | null;
+          total_a_cobrar?: number;
         };
         Relationships: [
           {
@@ -653,8 +728,36 @@ export type Database = {
           cuota_iva: number | null;
           total: number | null;
           retencion_irpf: number | null;
-          estado: "emitida" | "pagada" | "rectificada";
+          estado:
+            | "emitida"
+            | "pagada"
+            | "rectificada"
+            | "parcial"
+            | "vencida"
+            | "anulada";
           pdf_url: string | null;
+          titulo: string | null;
+          direccion_obra: string | null;
+          tipo_iva_default: 0 | 4 | 10 | 21 | null;
+          motivo_iva_reducido: string | null;
+          notas_cliente: string | null;
+          notas_internas: string | null;
+          forma_pago: string | null;
+          serie: string | null;
+          tipo_factura: "normal" | "rectificativa" | "anticipo" | "proforma" | "abono";
+          factura_rectificada_id: string | null;
+          motivo_rectificacion: string | null;
+          anticipo_de_presupuesto_id: string | null;
+          retencion_pct: number;
+          retencion_importe: number;
+          inversion_sujeto_pasivo: boolean;
+          motivo_isp: string | null;
+          total_a_cobrar: number;
+          dias_pago: number | null;
+          fecha_vencimiento: string | null;
+          importe_cobrado: number;
+          fecha_cobro: string | null;
+          notas_cobro: string | null;
         };
         Insert: {
           id?: string;
@@ -670,8 +773,36 @@ export type Database = {
           cuota_iva?: number | null;
           total?: number | null;
           retencion_irpf?: number | null;
-          estado?: "emitida" | "pagada" | "rectificada";
+          estado?:
+            | "emitida"
+            | "pagada"
+            | "rectificada"
+            | "parcial"
+            | "vencida"
+            | "anulada";
           pdf_url?: string | null;
+          titulo?: string | null;
+          direccion_obra?: string | null;
+          tipo_iva_default?: 0 | 4 | 10 | 21 | null;
+          motivo_iva_reducido?: string | null;
+          notas_cliente?: string | null;
+          notas_internas?: string | null;
+          forma_pago?: string | null;
+          serie?: string | null;
+          tipo_factura?: "normal" | "rectificativa" | "anticipo" | "proforma" | "abono";
+          factura_rectificada_id?: string | null;
+          motivo_rectificacion?: string | null;
+          anticipo_de_presupuesto_id?: string | null;
+          retencion_pct?: number;
+          retencion_importe?: number;
+          inversion_sujeto_pasivo?: boolean;
+          motivo_isp?: string | null;
+          total_a_cobrar?: number;
+          dias_pago?: number | null;
+          fecha_vencimiento?: string | null;
+          importe_cobrado?: number;
+          fecha_cobro?: string | null;
+          notas_cobro?: string | null;
         };
         Update: {
           id?: string;
@@ -687,10 +818,141 @@ export type Database = {
           cuota_iva?: number | null;
           total?: number | null;
           retencion_irpf?: number | null;
-          estado?: "emitida" | "pagada" | "rectificada";
+          estado?:
+            | "emitida"
+            | "pagada"
+            | "rectificada"
+            | "parcial"
+            | "vencida"
+            | "anulada";
           pdf_url?: string | null;
+          titulo?: string | null;
+          direccion_obra?: string | null;
+          tipo_iva_default?: 0 | 4 | 10 | 21 | null;
+          motivo_iva_reducido?: string | null;
+          notas_cliente?: string | null;
+          notas_internas?: string | null;
+          forma_pago?: string | null;
+          serie?: string | null;
+          tipo_factura?: "normal" | "rectificativa" | "anticipo" | "proforma" | "abono";
+          factura_rectificada_id?: string | null;
+          motivo_rectificacion?: string | null;
+          anticipo_de_presupuesto_id?: string | null;
+          retencion_pct?: number;
+          retencion_importe?: number;
+          inversion_sujeto_pasivo?: boolean;
+          motivo_isp?: string | null;
+          total_a_cobrar?: number;
+          dias_pago?: number | null;
+          fecha_vencimiento?: string | null;
+          importe_cobrado?: number;
+          fecha_cobro?: string | null;
+          notas_cobro?: string | null;
         };
         Relationships: [];
+      };
+      factura_capitulos: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          factura_id: string;
+          orden: number;
+          nombre: string;
+          capitulo_sistema: CapituloSistema | null;
+          subtotal: number;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          factura_id: string;
+          orden?: number;
+          nombre: string;
+          capitulo_sistema?: CapituloSistema | null;
+          subtotal?: number;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          factura_id?: string;
+          orden?: number;
+          nombre?: string;
+          capitulo_sistema?: CapituloSistema | null;
+          subtotal?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "factura_capitulos_factura_id_fkey";
+            columns: ["factura_id"];
+            isOneToOne: false;
+            referencedRelation: "facturas";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      factura_partidas: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          factura_id: string;
+          capitulo_id: string | null;
+          partida_biblioteca_id: string | null;
+          orden: number;
+          descripcion: string;
+          unidad: "m2" | "m3" | "ml" | "ud" | "h" | "kg" | "pa";
+          cantidad: number;
+          precio_unitario: number;
+          /** Generated column: cantidad * precio_unitario (read-only) */
+          importe: number;
+          tipo_iva: 0 | 4 | 10 | 21;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          factura_id: string;
+          capitulo_id?: string | null;
+          partida_biblioteca_id?: string | null;
+          orden?: number;
+          descripcion: string;
+          unidad?: "m2" | "m3" | "ml" | "ud" | "h" | "kg" | "pa";
+          cantidad?: number;
+          precio_unitario?: number;
+          tipo_iva?: 0 | 4 | 10 | 21;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          factura_id?: string;
+          capitulo_id?: string | null;
+          partida_biblioteca_id?: string | null;
+          orden?: number;
+          descripcion?: string;
+          unidad?: "m2" | "m3" | "ml" | "ud" | "h" | "kg" | "pa";
+          cantidad?: number;
+          precio_unitario?: number;
+          tipo_iva?: 0 | 4 | 10 | 21;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "factura_partidas_factura_id_fkey";
+            columns: ["factura_id"];
+            isOneToOne: false;
+            referencedRelation: "facturas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "factura_partidas_capitulo_id_fkey";
+            columns: ["capitulo_id"];
+            isOneToOne: false;
+            referencedRelation: "factura_capitulos";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       contadores: {
         Row: {

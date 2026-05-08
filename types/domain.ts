@@ -23,7 +23,27 @@ export type EstadoPresupuesto =
   | "rechazado"
   | "caducado";
 
-export type EstadoFactura = "emitida" | "pagada" | "rectificada";
+export type EstadoFactura =
+  | "emitida"
+  | "pagada"
+  | "rectificada"
+  | "parcial"
+  | "vencida"
+  | "anulada";
+
+export type TipoFactura =
+  | "normal"
+  | "rectificativa"
+  | "anticipo"
+  | "proforma"
+  | "abono";
+
+export type TipoFiscalCliente =
+  | "particular"
+  | "autonomo"
+  | "empresa"
+  | "comunidad"
+  | "administracion";
 
 export type Plan = "trial" | "basico" | "pro" | "equipo";
 

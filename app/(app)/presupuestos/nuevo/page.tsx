@@ -16,6 +16,11 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { siguienteNumero } from '@/lib/numbering'
 import { calcularIvaAplicable, type IvaInput } from '@/lib/iva/calcular-iva'
+import {
+  calcularTotales,
+  porcentajeRetencionSugerido,
+  LEYENDA_ISP,
+} from '@/lib/fiscal/retencion-isp'
 import { formatCurrency } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
@@ -84,6 +89,9 @@ export default function NuevoPresupuestoPage() {
       plazo_ejecucion_dias: 30 as any,
       // biome-ignore lint/suspicious/noExplicitAny: schema permite string vacío en estos campos
       garantia_meses: 12 as any,
+      retencion_pct: 0,
+      inversion_sujeto_pasivo: false,
+      motivo_isp: '',
       capitulos: [
         {
           id: typeof crypto !== 'undefined' && crypto.randomUUID
@@ -105,7 +113,7 @@ export default function NuevoPresupuestoPage() {
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
 
-  // Empresa actual
+  // Empresa actual (con fecha de alta para sugerir 7% vs 15% de retención)
   const { data: empresaInfo } = useQuery({
     queryKey: ['empresa-actual'],
     queryFn: async () => {
@@ -119,7 +127,18 @@ export default function NuevoPresupuestoPage() {
         .eq('user_id', user.id)
         .single()
       if (!miembro) throw new Error('Sin empresa asociada')
-      return { empresaId: miembro.empresa_id, userId: user.id }
+      const { data: empresa } = await supabase
+        .from('empresas')
+        .select('fecha_alta_actividad')
+        .eq('id', miembro.empresa_id)
+        .maybeSingle()
+      return {
+        empresaId: miembro.empresa_id,
+        userId: user.id,
+        fechaAltaActividad:
+          // biome-ignore lint/suspicious/noExplicitAny: column nueva
+          (empresa as any)?.fecha_alta_actividad ?? null,
+      }
     },
   })
   const empresaId = empresaInfo?.empresaId
@@ -254,6 +273,22 @@ export default function NuevoPresupuestoPage() {
       setValue('direccion_obra', partes, { shouldDirty: true })
     }
 
+    // Autoaplicar retención IRPF e ISP según perfil fiscal del cliente.
+    // El usuario puede sobreescribir desde la sección "IVA y retenciones".
+    if (cliente.aplica_retencion_irpf) {
+      const pct = porcentajeRetencionSugerido(
+        empresaInfo?.fechaAltaActividad ?? null,
+      )
+      setValue('retencion_pct', pct, { shouldDirty: true })
+    } else {
+      setValue('retencion_pct', 0, { shouldDirty: true })
+    }
+    setValue(
+      'inversion_sujeto_pasivo',
+      !!cliente.aplica_isp_construccion,
+      { shouldDirty: true },
+    )
+
     // Recordar para próximos presupuestos
     if (typeof window !== 'undefined') {
       try {
@@ -292,7 +327,10 @@ export default function NuevoPresupuestoPage() {
     }
   }, [empresaId, clienteSeleccionado, supabase, setValue])
 
-  // Totales
+  const retencionPctW = watch('retencion_pct')
+  const ispW = watch('inversion_sujeto_pasivo')
+
+  // Totales (con retención IRPF e ISP)
   const totals = useMemo(() => {
     const tipoIva = ivaResult?.porcentaje ?? 21
     let baseImponible = 0
@@ -301,10 +339,14 @@ export default function NuevoPresupuestoPage() {
         baseImponible += (Number(p.cantidad) || 0) * (Number(p.precio_unitario) || 0)
       }
     }
-    const cuotaIva = (baseImponible * tipoIva) / 100
-    const total = baseImponible + cuotaIva
-    return { baseImponible, cuotaIva, total, tipoIva }
-  }, [capitulos, ivaResult])
+    const t = calcularTotales({
+      baseImponible,
+      tipoIva,
+      retencionPct: Number(retencionPctW) || 0,
+      inversionSujetoPasivo: !!ispW,
+    })
+    return { ...t, tipoIva }
+  }, [capitulos, ivaResult, retencionPctW, ispW])
 
   async function onSubmit(data: PresupuestoFormData) {
     if (!empresaId) {
@@ -336,6 +378,13 @@ export default function NuevoPresupuestoPage() {
           base_imponible: totals.baseImponible,
           cuota_iva: totals.cuotaIva,
           total: totals.total,
+          retencion_pct: data.retencion_pct ?? 0,
+          retencion_importe: totals.retencionImporte,
+          inversion_sujeto_pasivo: data.inversion_sujeto_pasivo ?? false,
+          motivo_isp: data.inversion_sujeto_pasivo
+            ? data.motivo_isp || LEYENDA_ISP
+            : null,
+          total_a_cobrar: totals.totalACobrar,
           notas_cliente: data.notas_cliente || null,
           notas_internas: data.notas_internas || null,
           exclusiones: data.exclusiones || null,
@@ -770,6 +819,64 @@ export default function NuevoPresupuestoPage() {
               </div>
             </div>
           )}
+
+          {/* Retención IRPF */}
+          <div className="space-y-2">
+            <Label htmlFor="retencion_pct">Retención IRPF (%)</Label>
+            <div className="flex items-center gap-2">
+              {[0, 7, 15].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() =>
+                    setValue('retencion_pct', v, { shouldDirty: true })
+                  }
+                  className={`rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition-colors ${
+                    Number(retencionPctW) === v
+                      ? 'border-[--color-primary] bg-[--color-primary]/10 text-[--color-primary]'
+                      : 'border-[--color-border] text-[--color-muted-foreground]'
+                  }`}
+                >
+                  {v}%
+                </button>
+              ))}
+              <Input
+                id="retencion_pct"
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                className="w-24"
+                {...register('retencion_pct', { valueAsNumber: true })}
+              />
+            </div>
+            <p className="text-xs text-[--color-muted-foreground]">
+              0% para particular. 7% si llevas &lt; 3 años de alta. 15% para
+              empresas/autónomos en general.
+            </p>
+          </div>
+
+          {/* Inversión sujeto pasivo */}
+          <label className="flex items-start gap-3 rounded-lg border border-[--color-border] bg-[--color-card] p-3">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-5 w-5"
+              checked={!!ispW}
+              onChange={(e) =>
+                setValue('inversion_sujeto_pasivo', e.target.checked, {
+                  shouldDirty: true,
+                })
+              }
+            />
+            <span className="text-sm">
+              <span className="font-medium">
+                Inversión del sujeto pasivo (ISP)
+              </span>
+              <span className="block text-xs text-[--color-muted-foreground]">
+                La factura se emitirá <strong>sin IVA</strong>. Aplica en
+                ejecuciones de obra a empresario/promotor (art. 84.Uno.2.f LIVA).
+              </span>
+            </span>
+          </label>
         </section>
 
         {/* Capítulos y partidas */}
@@ -808,25 +915,47 @@ export default function NuevoPresupuestoPage() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-400">
-                IVA {totals.tipoIva}%
+                IVA {totals.tipoIva}%{' '}
+                {ispW && <span className="text-amber-600">(no se cobra · ISP)</span>}
               </span>
               <span className="font-medium text-gray-900 dark:text-gray-100">
-                {formatCurrency(totals.cuotaIva)}
+                {ispW ? '—' : formatCurrency(totals.cuotaIva)}
               </span>
             </div>
+            {Number(retencionPctW) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600 dark:text-gray-400">
+                  Retención IRPF {retencionPctW}%
+                </span>
+                <span className="font-medium text-red-600">
+                  −{formatCurrency(totals.retencionImporte)}
+                </span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-2 dark:border-gray-700">
               <div className="flex justify-between">
                 <span className="text-base font-bold text-gray-900 dark:text-gray-100">
-                  Total
+                  Total a cobrar
                 </span>
                 <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                  {formatCurrency(totals.total)}
+                  {formatCurrency(totals.totalACobrar)}
                 </span>
               </div>
+              {(ispW || Number(retencionPctW) > 0) && (
+                <div className="mt-1 flex justify-between text-xs text-[--color-muted-foreground]">
+                  <span>Total con IVA</span>
+                  <span>{formatCurrency(totals.total)}</span>
+                </div>
+              )}
             </div>
-            {ivaResult && ivaResult.porcentaje < 21 && (
+            {ivaResult && ivaResult.porcentaje < 21 && !ispW && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {ivaResult.motivo}
+              </p>
+            )}
+            {ispW && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {LEYENDA_ISP}
               </p>
             )}
           </div>
