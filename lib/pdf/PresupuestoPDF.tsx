@@ -44,6 +44,11 @@ interface PresupuestoPDFProps {
     forma_pago?: string | null
     plazo_ejecucion_dias?: number | null
     garantia_meses?: number | null
+    retencion_pct?: number | null
+    retencion_importe?: number | null
+    inversion_sujeto_pasivo?: boolean | null
+    motivo_isp?: string | null
+    total_a_cobrar?: number | null
   }
   partidas: Array<{
     descripcion: string
@@ -534,20 +539,44 @@ export default function PresupuestoPDF({
           <View style={styles.totalsRow}>
             <Text style={styles.totalsLabel}>
               IVA {presupuesto.tipo_iva_default}%
+              {presupuesto.inversion_sujeto_pasivo ? ' (no se cobra · ISP)' : ''}
             </Text>
             <Text style={styles.totalsValue}>
-              {eur(presupuesto.cuota_iva)}
+              {presupuesto.inversion_sujeto_pasivo
+                ? '—'
+                : eur(presupuesto.cuota_iva)}
             </Text>
           </View>
-          {presupuesto.motivo_iva_reducido && (
+          {!!presupuesto.retencion_pct && presupuesto.retencion_pct > 0 && (
+            <View style={styles.totalsRow}>
+              <Text style={styles.totalsLabel}>
+                Retención IRPF {presupuesto.retencion_pct}%
+              </Text>
+              <Text style={styles.totalsValue}>
+                −{eur(presupuesto.retencion_importe ?? 0)}
+              </Text>
+            </View>
+          )}
+          {presupuesto.motivo_iva_reducido && !presupuesto.inversion_sujeto_pasivo && (
             <Text style={styles.motivoIva}>
               {presupuesto.motivo_iva_reducido}
             </Text>
           )}
+          {presupuesto.inversion_sujeto_pasivo && (
+            <Text style={styles.motivoIva}>
+              {presupuesto.motivo_isp ||
+                'Operación con inversión del sujeto pasivo conforme al art. 84.Uno.2.f LIVA. El destinatario es el sujeto pasivo.'}
+            </Text>
+          )}
           <View style={styles.totalFinalRow}>
-            <Text style={styles.totalFinalLabel}>Total</Text>
+            <Text style={styles.totalFinalLabel}>
+              {presupuesto.inversion_sujeto_pasivo ||
+              (presupuesto.retencion_pct ?? 0) > 0
+                ? 'Total a cobrar'
+                : 'Total'}
+            </Text>
             <Text style={styles.totalFinalValue}>
-              {eur(presupuesto.total)}
+              {eur(presupuesto.total_a_cobrar ?? presupuesto.total)}
             </Text>
           </View>
         </View>

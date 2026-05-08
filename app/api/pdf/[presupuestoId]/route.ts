@@ -141,6 +141,13 @@ export async function GET(
         forma_pago: presupuesto.forma_pago,
         plazo_ejecucion_dias: presupuesto.plazo_ejecucion_dias,
         garantia_meses: presupuesto.garantia_meses,
+        retencion_pct: Number(presupuesto.retencion_pct ?? 0),
+        retencion_importe: Number(presupuesto.retencion_importe ?? 0),
+        inversion_sujeto_pasivo: !!presupuesto.inversion_sujeto_pasivo,
+        motivo_isp: presupuesto.motivo_isp,
+        total_a_cobrar: Number(
+          presupuesto.total_a_cobrar ?? presupuesto.total ?? 0,
+        ),
       },
       partidas,
       capitulos,

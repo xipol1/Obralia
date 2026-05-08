@@ -14,7 +14,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { clienteAplicaRetencionPorDefecto } from '@/lib/fiscal/retencion-isp'
+import type { TipoFiscalCliente } from '@/types/domain'
+
+const TIPO_FISCAL_OPTIONS = [
+  { value: 'particular', label: 'Particular (sin retención)' },
+  { value: 'autonomo', label: 'Autónomo' },
+  { value: 'empresa', label: 'Empresa' },
+  { value: 'comunidad', label: 'Comunidad de propietarios' },
+  { value: 'administracion', label: 'Administración pública' },
+]
 
 export default function NuevoClientePage() {
   const router = useRouter()
@@ -29,9 +40,13 @@ export default function NuevoClientePage() {
     setValue,
     formState: { errors },
   } = useForm<ClienteFormData>({
-    resolver: zodResolver(clienteSchema),
+    // biome-ignore lint/suspicious/noExplicitAny: zod resolver typing con defaults
+    resolver: zodResolver(clienteSchema) as any,
     defaultValues: {
       tipo: 'particular',
+      tipo_fiscal: 'particular',
+      aplica_retencion_irpf: false,
+      aplica_isp_construccion: false,
       nombre: '',
       apellidos: '',
       razon_social: '',
@@ -42,11 +57,31 @@ export default function NuevoClientePage() {
       codigo_postal: '',
       municipio: '',
       provincia: '',
+      contacto_nombre: '',
+      contacto_telefono: '',
+      contacto_email: '',
+      administrador_nombre: '',
+      administrador_email: '',
+      direccion_facturacion: '',
+      cp_facturacion: '',
+      municipio_facturacion: '',
+      provincia_facturacion: '',
       notas: '',
     },
   })
 
   const tipo = watch('tipo')
+  const tipoFiscal = watch('tipo_fiscal')
+  const aplicaRetencion = watch('aplica_retencion_irpf')
+  const aplicaIsp = watch('aplica_isp_construccion')
+
+  function setTipoFiscal(t: TipoFiscalCliente) {
+    setValue('tipo_fiscal', t, { shouldValidate: true })
+    // Defaults inteligentes: empresas/autónomos aplican retención por defecto.
+    setValue('aplica_retencion_irpf', clienteAplicaRetencionPorDefecto(t))
+    // tipo (particular/empresa) lo mantenemos sincronizado para compatibilidad
+    setValue('tipo', t === 'particular' ? 'particular' : 'empresa')
+  }
 
   async function onSubmit(data: ClienteFormData) {
     setSaving(true)
@@ -81,6 +116,9 @@ export default function NuevoClientePage() {
       const { error } = await supabase.from('clientes').insert({
         empresa_id: miembro.empresa_id,
         tipo: data.tipo,
+        tipo_fiscal: data.tipo_fiscal,
+        aplica_retencion_irpf: data.aplica_retencion_irpf,
+        aplica_isp_construccion: data.aplica_isp_construccion,
         nombre: data.nombre,
         apellidos: data.apellidos || null,
         razon_social: data.razon_social || null,
@@ -91,6 +129,15 @@ export default function NuevoClientePage() {
         codigo_postal: data.codigo_postal || null,
         municipio: data.municipio || null,
         provincia: data.provincia || null,
+        contacto_nombre: data.contacto_nombre || null,
+        contacto_telefono: data.contacto_telefono || null,
+        contacto_email: data.contacto_email || null,
+        administrador_nombre: data.administrador_nombre || null,
+        administrador_email: data.administrador_email || null,
+        direccion_facturacion: data.direccion_facturacion || null,
+        cp_facturacion: data.cp_facturacion || null,
+        municipio_facturacion: data.municipio_facturacion || null,
+        provincia_facturacion: data.provincia_facturacion || null,
         notas: data.notas || null,
       })
 
@@ -139,7 +186,7 @@ export default function NuevoClientePage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setValue('tipo', 'particular', { shouldValidate: true })}
+              onClick={() => setTipoFiscal('particular')}
               className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[--radius] border-2 px-4 py-3 text-sm font-semibold transition-colors ${
                 tipo === 'particular'
                   ? 'border-[--color-primary] bg-[--color-primary] text-white'
@@ -151,7 +198,7 @@ export default function NuevoClientePage() {
             </button>
             <button
               type="button"
-              onClick={() => setValue('tipo', 'empresa', { shouldValidate: true })}
+              onClick={() => setTipoFiscal('empresa')}
               className={`flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[--radius] border-2 px-4 py-3 text-sm font-semibold transition-colors ${
                 tipo === 'empresa'
                   ? 'border-[--color-primary] bg-[--color-primary] text-white'
@@ -163,6 +210,65 @@ export default function NuevoClientePage() {
             </button>
           </div>
         </div>
+
+        {/* Datos fiscales */}
+        <Card className="space-y-4 p-5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-[--color-muted-foreground]">
+            Datos fiscales
+          </h2>
+          <div className="space-y-2">
+            <Label htmlFor="tipo_fiscal">Categoría fiscal</Label>
+            <Select
+              id="tipo_fiscal"
+              value={tipoFiscal}
+              onChange={(e) =>
+                setTipoFiscal(e.target.value as TipoFiscalCliente)
+              }
+              options={TIPO_FISCAL_OPTIONS}
+            />
+            <p className="text-xs text-[--color-muted-foreground]">
+              Determina si la factura llevará retención IRPF e inversión del
+              sujeto pasivo.
+            </p>
+          </div>
+
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={aplicaRetencion ?? false}
+              onChange={(e) =>
+                setValue('aplica_retencion_irpf', e.target.checked)
+              }
+            />
+            <span className="text-sm">
+              <span className="font-medium">Aplicar retención IRPF</span>
+              <span className="block text-xs text-[--color-muted-foreground]">
+                15% (7% si llevas &lt; 3 años de alta).
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              className="h-5 w-5"
+              checked={aplicaIsp ?? false}
+              onChange={(e) =>
+                setValue('aplica_isp_construccion', e.target.checked)
+              }
+            />
+            <span className="text-sm">
+              <span className="font-medium">
+                Inversión del sujeto pasivo (construcción)
+              </span>
+              <span className="block text-xs text-[--color-muted-foreground]">
+                La factura se emite sin IVA. Aplica cuando trabajas como
+                subcontratista o para promotor empresario.
+              </span>
+            </span>
+          </label>
+        </Card>
 
         {/* Datos principales */}
         <Card className="space-y-4 p-5">

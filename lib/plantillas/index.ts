@@ -2,7 +2,6 @@
  * Obralia - Plantillas de obra (Sesión 2 - ADR-002)
  *
  * Capa de acceso a datos para plantillas de presupuesto en BD.
- * Sustituye al array hardcodeado en lib/plantillas/legacy.ts.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'

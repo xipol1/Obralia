@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, Users, Settings, Plus } from 'lucide-react'
+import { FileText, Users, Settings, Plus, Receipt } from 'lucide-react'
 
 const tabs = [
   { href: '/presupuestos', label: 'Presupuestos', icon: FileText },
+  { href: '/facturas', label: 'Facturas', icon: Receipt },
   { href: '/clientes', label: 'Clientes', icon: Users },
   { href: '/ajustes', label: 'Ajustes', icon: Settings },
 ] as const

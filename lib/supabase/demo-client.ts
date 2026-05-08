@@ -13,7 +13,7 @@ const DEMO_PHONE = '+34674709388'
 export const DEMO_EMPRESA_ID = '00000000-0000-0000-0000-000000000001'
 
 // v2: schema extendido con biblioteca, plantillas y capítulos (Sesión 2)
-const DB_KEY = 'obralia-demo-db-v2'
+const DB_KEY = 'obralia-demo-db-v4'
 const SESSION_KEY = 'obralia-demo-session'
 
 type Row = Record<string, unknown>
@@ -30,6 +30,9 @@ interface DemoDb {
   plantillas_obra: Row[]
   plantilla_capitulos: Row[]
   plantilla_partidas: Row[]
+  facturas: Row[]
+  factura_capitulos: Row[]
+  factura_partidas: Row[]
 }
 
 import { buildBibliotecaSeed, buildPlantillasSeed } from './demo-seed-biblioteca'
@@ -73,6 +76,8 @@ function seed(): DemoDb {
         stripe_subscription_id: null,
         plan: 'trial',
         trial_ends_at: trialEndsAt,
+        fecha_alta_actividad: '2024-06-01',
+        retencion_reducida_hasta: '2027-06-01',
       },
     ],
     miembros: [
@@ -92,6 +97,18 @@ function seed(): DemoDb {
         updated_at: nowIso(),
         empresa_id: empresaId,
         tipo: 'particular',
+        tipo_fiscal: 'particular',
+        aplica_retencion_irpf: false,
+        aplica_isp_construccion: false,
+        contacto_nombre: null,
+        contacto_telefono: null,
+        contacto_email: null,
+        administrador_nombre: null,
+        administrador_email: null,
+        direccion_facturacion: null,
+        cp_facturacion: null,
+        municipio_facturacion: null,
+        provincia_facturacion: null,
         nombre: 'María',
         apellidos: 'García Fernández',
         razon_social: null,
@@ -110,6 +127,18 @@ function seed(): DemoDb {
         updated_at: nowIso(),
         empresa_id: empresaId,
         tipo: 'particular',
+        tipo_fiscal: 'particular',
+        aplica_retencion_irpf: false,
+        aplica_isp_construccion: false,
+        contacto_nombre: null,
+        contacto_telefono: null,
+        contacto_email: null,
+        administrador_nombre: null,
+        administrador_email: null,
+        direccion_facturacion: null,
+        cp_facturacion: null,
+        municipio_facturacion: null,
+        provincia_facturacion: null,
         nombre: 'Carlos',
         apellidos: 'Martínez Ruiz',
         razon_social: null,
@@ -152,6 +181,14 @@ function seed(): DemoDb {
         enviado_at: null,
         aceptado_at: null,
         firma_url: null,
+        firma_cliente_nombre: null,
+        firma_cliente_at: null,
+        serie: null,
+        retencion_pct: 0,
+        retencion_importe: 0,
+        inversion_sujeto_pasivo: false,
+        motivo_isp: null,
+        total_a_cobrar: 5335,
       },
     ],
     presupuesto_capitulos: [
@@ -177,10 +214,19 @@ function seed(): DemoDb {
       partida('100', 8, 'Pintura antihumedad de techo', 'm2', 6.5, 15),
     ],
     contadores: [
-      { empresa_id: empresaId, tipo: 'presupuesto', ejercicio: 2026, ultimo_numero: 1 },
+      {
+        empresa_id: empresaId,
+        tipo: 'presupuesto',
+        ejercicio: 2026,
+        serie: '',
+        ultimo_numero: 1,
+      },
     ],
     partidas_biblioteca: buildBibliotecaSeed(),
     ...buildPlantillasSeed(),
+    facturas: [],
+    factura_capitulos: [],
+    factura_partidas: [],
   }
 }
 
@@ -434,8 +480,14 @@ function execute(state: QueryState): { data: unknown; error: null | { message: s
         ...(p as Row),
       }
       // Generated columns
-      if (state.table === 'presupuesto_partidas') {
+      if (state.table === 'presupuesto_partidas' || state.table === 'factura_partidas') {
         row.importe = Number(row.cantidad ?? 0) * Number(row.precio_unitario ?? 0)
+      }
+      if (state.table === 'partidas_biblioteca' && row.descripcion) {
+        row.descripcion_norm = String(row.descripcion)
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
       }
       tableData.push(row)
       inserted.push(row)
@@ -449,8 +501,14 @@ function execute(state: QueryState): { data: unknown; error: null | { message: s
     const filtered = applyFilters(tableData, state.filters)
     for (const row of filtered) {
       Object.assign(row, state.payload, { updated_at: nowIso() })
-      if (state.table === 'presupuesto_partidas') {
+      if (state.table === 'presupuesto_partidas' || state.table === 'factura_partidas') {
         row.importe = Number(row.cantidad ?? 0) * Number(row.precio_unitario ?? 0)
+      }
+      if (state.table === 'partidas_biblioteca' && row.descripcion) {
+        row.descripcion_norm = String(row.descripcion)
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase()
       }
     }
     saveDb(db)
@@ -668,20 +726,29 @@ async function demoRpc(fn: string, args: Record<string, unknown>) {
     const ejercicio = Number(args.p_ejercicio)
     const tipo = String(args.p_tipo)
     const empresaId = String(args.p_empresa_id)
+    const serie = String(args.p_serie ?? '')
     let counter = db.contadores.find(
       (c) =>
         c.empresa_id === empresaId &&
         c.tipo === tipo &&
-        c.ejercicio === ejercicio,
+        c.ejercicio === ejercicio &&
+        (c.serie ?? '') === serie,
     )
     if (!counter) {
-      counter = { empresa_id: empresaId, tipo, ejercicio, ultimo_numero: 0 }
+      counter = {
+        empresa_id: empresaId,
+        tipo,
+        ejercicio,
+        serie,
+        ultimo_numero: 0,
+      }
       db.contadores.push(counter)
     }
     counter.ultimo_numero = Number(counter.ultimo_numero) + 1
     saveDb(db)
+    const padded = String(counter.ultimo_numero).padStart(4, '0')
     return {
-      data: `${ejercicio}-${String(counter.ultimo_numero).padStart(4, '0')}`,
+      data: serie === '' ? `${ejercicio}-${padded}` : `${serie}/${ejercicio}-${padded}`,
       error: null,
     }
   }
@@ -702,6 +769,12 @@ async function demoRpc(fn: string, args: Record<string, unknown>) {
       capitulo: original.capitulo,
       codigo: original.codigo,
       descripcion: original.descripcion,
+      descripcion_norm:
+        original.descripcion_norm ??
+        String(original.descripcion ?? '')
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')
+          .toLowerCase(),
       unidad: original.unidad,
       precio_unitario_orientativo: original.precio_unitario_orientativo,
       tipo_iva_sugerido: original.tipo_iva_sugerido,

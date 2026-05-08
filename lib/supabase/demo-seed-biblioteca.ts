@@ -127,6 +127,13 @@ const PARTIDAS_DATA: BasePartida[] = [
 
 const ahora = '2026-05-03T00:00:00.000Z'
 
+function normalizar(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+}
+
 export function buildBibliotecaSeed(): Row[] {
   return PARTIDAS_DATA.map((p) => ({
     id: partidaId(p.n),
@@ -137,6 +144,7 @@ export function buildBibliotecaSeed(): Row[] {
     capitulo: p.capitulo,
     codigo: p.codigo,
     descripcion: p.descripcion,
+    descripcion_norm: normalizar(p.descripcion),
     unidad: p.unidad,
     precio_unitario_orientativo: p.precio,
     tipo_iva_sugerido: p.iva,
